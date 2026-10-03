@@ -66,14 +66,48 @@ pub(crate) fn spawn_enemies(
     font: Handle<Font>,
 ) {
     let shift = (crate::room::seed(room) % 5) as f32 * 18.0;
-    let specs = [
-        (EnemyKind::Minion, Vec2::new(-260.0 + shift, 120.0)),
-        (EnemyKind::Minion, Vec2::new(250.0 - shift, -80.0)),
-        (EnemyKind::Thug, Vec2::new(180.0, 180.0 - shift)),
-        (EnemyKind::Miniboss, Vec2::new(0.0, -160.0 + shift)),
+    let population = crate::room::room_population(room);
+    let minion_positions = [
+        Vec2::new(-260.0 + shift, 120.0),
+        Vec2::new(250.0 - shift, -80.0),
+        Vec2::new(-220.0, -190.0 + shift),
     ];
-    for (kind, pos) in specs {
-        spawn_enemy(commands, meshes, materials, kind, pos, room, font.clone());
+    for position in minion_positions.into_iter().take(population.minions) {
+        spawn_enemy(
+            commands,
+            meshes,
+            materials,
+            EnemyKind::Minion,
+            position,
+            room,
+            font.clone(),
+        );
+    }
+    let thug_positions = [
+        Vec2::new(180.0, 180.0 - shift),
+        Vec2::new(-40.0, 190.0 - shift),
+    ];
+    for position in thug_positions.into_iter().take(population.thugs) {
+        spawn_enemy(
+            commands,
+            meshes,
+            materials,
+            EnemyKind::Thug,
+            position,
+            room,
+            font.clone(),
+        );
+    }
+    if population.minibosses > 0 {
+        spawn_enemy(
+            commands,
+            meshes,
+            materials,
+            EnemyKind::Miniboss,
+            Vec2::new(0.0, -160.0 + shift),
+            room,
+            font,
+        );
     }
 }
 

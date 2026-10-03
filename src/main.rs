@@ -76,6 +76,7 @@ fn main() {
             Update,
             (
                 upgrades::update_upgrade_overlay,
+                upgrades::upgrade_choice_visuals,
                 upgrades::choose_upgrade,
                 damageable::sync_player_damageable,
             )

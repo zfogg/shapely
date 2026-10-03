@@ -10,6 +10,47 @@ pub const ROOM_SIZE: Vec2 = Vec2::new(1120.0, 620.0);
 #[derive(Component)]
 pub(crate) struct RoomEntity;
 
+/// Deterministic enemy composition for one room in the 3x3 world grid.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct RoomPopulation {
+    pub(crate) minions: usize,
+    pub(crate) thugs: usize,
+    pub(crate) minibosses: usize,
+}
+
+/// Returns the enemy mix for a room, keeping elite encounters uncommon.
+pub(crate) fn room_population(room: IVec2) -> RoomPopulation {
+    let column = (room.x + 1).rem_euclid(3);
+    let row = (room.y + 1).rem_euclid(3);
+    let room_index = column + row * 3;
+    // Two rooms are miniboss rooms; three additional rooms are thug-only,
+    // for five thug rooms total.
+    let miniboss_room = matches!(room_index, 0 | 8);
+    let thug_room = miniboss_room || matches!(room_index, 1 | 3 | 5);
+
+    RoomPopulation {
+        // Most rooms have minions, but one ordinary room is a sparse elite
+        // encounter and miniboss rooms stay intentionally less crowded.
+        minions: if room_index == 4 {
+            0
+        } else if miniboss_room {
+            1
+        } else if thug_room {
+            2
+        } else {
+            3
+        },
+        thugs: if miniboss_room {
+            2
+        } else if thug_room {
+            1
+        } else {
+            0
+        },
+        minibosses: usize::from(miniboss_room),
+    }
+}
+
 /// Per-room persistence for enemies and hostile projectiles.
 #[derive(Resource, Default)]
 pub(crate) struct RoomSnapshots {
@@ -396,5 +437,42 @@ mod tests {
         snapshots.projectiles.insert(IVec2::new(1, 0), Vec::new());
         assert!(snapshots.enemies.contains_key(&IVec2::ZERO));
         assert!(snapshots.projectiles.contains_key(&IVec2::new(1, 0)));
+    }
+
+    #[test]
+    fn room_population_keeps_minibosses_in_the_one_to_three_range() {
+        let populations: Vec<_> = (-1..=1)
+            .flat_map(|y| (-1..=1).map(move |x| room_population(IVec2::new(x, y))))
+            .collect();
+        let miniboss_rooms = populations
+            .iter()
+            .filter(|population| population.minibosses > 0)
+            .count();
+        assert!((1..=3).contains(&miniboss_rooms));
+    }
+
+    #[test]
+    fn room_population_keeps_thugs_in_the_four_to_seven_range() {
+        let populations: Vec<_> = (-1..=1)
+            .flat_map(|y| (-1..=1).map(move |x| room_population(IVec2::new(x, y))))
+            .collect();
+        let thug_rooms = populations
+            .iter()
+            .filter(|population| population.thugs > 0)
+            .count();
+        assert!((4..=7).contains(&thug_rooms));
+    }
+
+    #[test]
+    fn miniboss_rooms_have_two_thugs_and_sparse_minions() {
+        for y in -1..=1 {
+            for x in -1..=1 {
+                let population = room_population(IVec2::new(x, y));
+                if population.minibosses > 0 {
+                    assert_eq!(population.thugs, 2);
+                    assert!(population.minions <= 1);
+                }
+            }
+        }
     }
 }

@@ -27,6 +27,28 @@ pub(crate) struct UpgradePanel;
 #[derive(Component)]
 pub(crate) struct UpgradeChoicesText;
 
+/// Container that reveals the clickable rewards after the chest opens.
+#[derive(Component)]
+pub(crate) struct UpgradeChoicesContainer;
+
+/// One mouse-selectable reward choice.
+#[derive(Component)]
+pub(crate) struct UpgradeChoiceButton {
+    pub(crate) index: usize,
+}
+
+/// Label inside one reward choice button.
+#[derive(Component)]
+pub(crate) struct UpgradeChoiceLabel {
+    pub(crate) index: usize,
+}
+
+/// Short-lived click emphasis for a reward choice.
+#[derive(Component)]
+pub(crate) struct UpgradeChoiceAnimation {
+    pub(crate) timer: f32,
+}
+
 /// Marker for the animated chest lid.
 #[derive(Component)]
 pub(crate) struct ChestLid;
@@ -102,7 +124,7 @@ pub(crate) fn apply_upgrade(state: &mut crate::GameState, kind: UpgradeKind) {
     }
 }
 
-/// Builds the centered reward chest overlay.
+/// Builds the centered reward chest overlay and its mouse-selectable choices.
 pub(crate) fn spawn_upgrade_overlay(commands: &mut Commands, font: &Handle<Font>) {
     let panel = commands
         .spawn((
@@ -113,8 +135,8 @@ pub(crate) fn spawn_upgrade_overlay(commands: &mut Commands, font: &Handle<Font>
                     position_type: PositionType::Absolute,
                     left: Val::Percent(17.0),
                     top: Val::Percent(12.0),
-                    width: Val::Percent(66.0),
-                    height: Val::Percent(76.0),
+                    width: Val::Percent(78.0),
+                    height: Val::Percent(82.0),
                     align_items: AlignItems::Center,
                     justify_content: JustifyContent::Center,
                     ..default()
@@ -128,7 +150,7 @@ pub(crate) fn spawn_upgrade_overlay(commands: &mut Commands, font: &Handle<Font>
         parent
             .spawn(NodeBundle {
                 style: Style {
-                    width: Val::Px(620.0),
+                    width: Val::Percent(92.0),
                     flex_direction: FlexDirection::Column,
                     align_items: AlignItems::Center,
                     ..default()
@@ -168,7 +190,14 @@ pub(crate) fn spawn_upgrade_overlay(commands: &mut Commands, font: &Handle<Font>
                             position_type: PositionType::Relative,
                             width: Val::Px(190.0),
                             height: Val::Px(100.0),
-                            margin: UiRect::vertical(Val::Px(18.0)),
+                            // Leave a generous gap above the lid: it animates upward
+                            // and must never cover the subtitle above the chest.
+                            margin: UiRect::new(
+                                Val::Px(0.0),
+                                Val::Px(0.0),
+                                Val::Px(42.0),
+                                Val::Px(18.0),
+                            ),
                             ..default()
                         },
                         background_color: BackgroundColor(Color::srgb(0.55, 0.22, 0.06)),
@@ -215,15 +244,74 @@ pub(crate) fn spawn_upgrade_overlay(commands: &mut Commands, font: &Handle<Font>
                             },
                         ),
                         style: Style {
-                            width: Val::Px(590.0),
+                            width: Val::Percent(100.0),
                             ..default()
                         },
                         ..default()
                     },
                 ));
+                content
+                    .spawn((
+                        UpgradeChoicesContainer,
+                        NodeBundle {
+                            style: Style {
+                                display: Display::None,
+                                width: Val::Percent(100.0),
+                                justify_content: JustifyContent::Center,
+                                align_items: AlignItems::Stretch,
+                                margin: UiRect::top(Val::Px(14.0)),
+                                ..default()
+                            },
+                            ..default()
+                        },
+                    ))
+                    .with_children(|choices| {
+                        for index in 0..3 {
+                            choices
+                                .spawn((
+                                    UpgradeChoiceButton { index },
+                                    UpgradeChoiceAnimation { timer: 0.0 },
+                                    ButtonBundle {
+                                        style: Style {
+                                            width: Val::Px(220.0),
+                                            min_height: Val::Px(108.0),
+                                            margin: UiRect::horizontal(Val::Px(8.0)),
+                                            padding: UiRect::all(Val::Px(10.0)),
+                                            justify_content: JustifyContent::Center,
+                                            align_items: AlignItems::Center,
+                                            ..default()
+                                        },
+                                        background_color: BackgroundColor(Color::srgb(
+                                            0.08, 0.12, 0.28,
+                                        )),
+                                        ..default()
+                                    },
+                                ))
+                                .with_children(|button| {
+                                    button.spawn((
+                                        UpgradeChoiceLabel { index },
+                                        TextBundle {
+                                            text: Text::from_section(
+                                                format!("[{}] LOADING...", index + 1),
+                                                TextStyle {
+                                                    font: font.clone(),
+                                                    font_size: 16.0,
+                                                    color: Color::WHITE,
+                                                },
+                                            ),
+                                            style: Style {
+                                                width: Val::Percent(100.0),
+                                                ..default()
+                                            },
+                                            ..default()
+                                        },
+                                    ));
+                                });
+                        }
+                    });
                 content.spawn(TextBundle {
                     text: Text::from_section(
-                        "Choose exactly one with 1, 2, or 3",
+                        "Choose exactly one reward // click a card or press 1, 2, or 3",
                         TextStyle {
                             font: font.clone(),
                             font_size: 16.0,
@@ -246,6 +334,8 @@ pub(crate) fn update_upgrade_overlay(
     mut commands: Commands,
     mut state: ResMut<crate::GameState>,
     mut choices: Query<&mut Text, With<UpgradeChoicesText>>,
+    mut labels: Query<(&UpgradeChoiceLabel, &mut Text), Without<UpgradeChoicesText>>,
+    mut choice_container: Query<&mut Style, (With<UpgradeChoicesContainer>, Without<ChestLid>)>,
     mut lids: Query<&mut Style, With<ChestLid>>,
     cues: Option<Res<crate::audio::AudioCues>>,
 ) {
@@ -265,16 +355,55 @@ pub(crate) fn update_upgrade_overlay(
     for mut style in &mut lids {
         style.top = Val::Px(-26.0 * state.chest_open_progress);
     }
-    if let Ok(mut text) = choices.get_single_mut() {
-        text.sections[0].value = if state.chest_open_progress < 1.0 {
-            "OPENING CHEST...".into()
+    let choices_visible = state.chest_open_progress >= 1.0;
+    if let Ok(mut style) = choice_container.get_single_mut() {
+        style.display = if choices_visible {
+            Display::Flex
         } else {
-            let [a, b, c] = state.upgrade_choices;
-            let (an, ar) = upgrade_label(a);
-            let (bn, br) = upgrade_label(b);
-            let (cn, cr) = upgrade_label(c);
-            format!("[1] {an}\n    {ar}\n\n[2] {bn}\n    {br}\n\n[3] {cn}\n    {cr}")
+            Display::None
         };
+    }
+    if let Ok(mut text) = choices.get_single_mut() {
+        text.sections[0].value = if choices_visible {
+            "CHEST OPEN // CHOOSE YOUR REWARD".into()
+        } else {
+            "OPENING CHEST...".into()
+        };
+    }
+    let [a, b, c] = state.upgrade_choices;
+    for (label, mut text) in &mut labels {
+        let kind = [a, b, c][label.index];
+        let (name, rarity) = upgrade_label(kind);
+        text.sections[0].value = format!("[{}] {name}\n\n{rarity}", label.index + 1);
+    }
+}
+
+/// Gives reward cards clear hover, press, and release feedback.
+pub(crate) fn upgrade_choice_visuals(
+    time: Res<Time>,
+    mut buttons: Query<
+        (
+            &Interaction,
+            &mut BackgroundColor,
+            &mut Transform,
+            &mut UpgradeChoiceAnimation,
+        ),
+        With<UpgradeChoiceButton>,
+    >,
+) {
+    for (interaction, mut background, mut transform, mut animation) in &mut buttons {
+        animation.timer = (animation.timer - time.delta_seconds()).max(0.0);
+        let (color, hover_scale) = match interaction {
+            Interaction::Pressed => {
+                animation.timer = 0.18;
+                (Color::srgb(0.38, 0.68, 1.0), 1.08)
+            }
+            Interaction::Hovered => (Color::srgb(0.18, 0.32, 0.62), 1.04),
+            Interaction::None => (Color::srgb(0.08, 0.12, 0.28), 1.0),
+        };
+        let click_scale = 1.0 + animation.timer / 0.18 * 0.05;
+        background.0 = color;
+        transform.scale = Vec3::splat(hover_scale * click_scale);
     }
 }
 
@@ -284,11 +413,12 @@ pub(crate) fn choose_upgrade(
     mut state: ResMut<crate::GameState>,
     mut commands: Commands,
     cues: Option<Res<crate::audio::AudioCues>>,
+    mouse_choices: Query<(&Interaction, &UpgradeChoiceButton), Changed<Interaction>>,
 ) {
     if state.mode != crate::GameMode::Upgrade || state.chest_open_progress < 1.0 {
         return;
     }
-    let choice = if keys.just_pressed(KeyCode::Digit1) {
+    let keyboard_choice = if keys.just_pressed(KeyCode::Digit1) {
         Some(0)
     } else if keys.just_pressed(KeyCode::Digit2) {
         Some(1)
@@ -297,7 +427,12 @@ pub(crate) fn choose_upgrade(
     } else {
         None
     };
-    let Some(choice) = choice else { return };
+    let mouse_choice = mouse_choices.iter().find_map(|(interaction, button)| {
+        (*interaction == Interaction::Pressed).then_some(button.index)
+    });
+    let Some(choice) = keyboard_choice.or(mouse_choice) else {
+        return;
+    };
     let kind = state.upgrade_choices[choice];
     apply_upgrade(&mut state, kind);
     state.mode = crate::GameMode::Playing;
@@ -462,6 +597,28 @@ mod tests {
                 crate::GameMode::Playing
             );
         }
+    }
+
+    #[test]
+    fn mouse_choice_selects_the_matching_reward_card() {
+        let mut state = crate::GameState::default();
+        state.mode = crate::GameMode::Upgrade;
+        state.chest_open_progress = 1.0;
+        state.upgrade_choices = [
+            UpgradeKind::Speed,
+            UpgradeKind::Power,
+            UpgradeKind::AttackSpeed,
+        ];
+        let mut app = App::new();
+        app.insert_resource(state)
+            .insert_resource(ButtonInput::<KeyCode>::default())
+            .add_systems(Update, choose_upgrade);
+        app.world_mut()
+            .spawn((Interaction::Pressed, UpgradeChoiceButton { index: 1 }));
+        app.update();
+        let state = app.world().resource::<crate::GameState>();
+        assert_eq!(state.mode, crate::GameMode::Playing);
+        assert_eq!(state.power_multiplier, 1.18);
     }
 
     #[test]
