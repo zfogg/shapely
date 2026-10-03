@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 bevy = { version = "0.14", default-features = false, features = [
   "bevy_asset", "bevy_audio", "bevy_core_pipeline",
-  "bevy_render", "bevy_sprite", "bevy_text", "bevy_ui", "bevy_winit",
+  "bevy_render", "bevy_sprite", "bevy_text", "bevy_ui", "bevy_winit", "x11",
   "default_font", "multi_threaded", "png", "wav", "webgl2"
 ] }
 bevy_rapier2d = { version = "0.27", features = ["simd-stable"] }
