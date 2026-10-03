@@ -1,8 +1,8 @@
 # shapely
 
-![Shapely gameplay](assets/screenshots/shapely-start.jpg)
+A game where you're a shape and so is everyone else.
 
-An initial neon action-room prototype in Rust + Bevy.
+![Shapely gameplay](assets/screenshots/shapely-start.jpg)
 
 ## Controls
 
