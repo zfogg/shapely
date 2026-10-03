@@ -19,6 +19,17 @@ The map is a 3×3 room grid (center plus eight surrounding rooms). Every room ha
 cargo run
 ```
 
+## Run tests
+
+```powershell
+cargo test
+```
+
+The test suite uses Rust's built-in test harness, Bevy's headless `App` world
+for ECS system behavior, and `rstest` for parameterized attack hitbox cases.
+It covers room topology, wall-derived navigation, diagonal corner handling,
+attack hit detection, inventory effects, and player/enemy knockback.
+
 ## Run in a browser
 
 Install the WASM target and Trunk once:
