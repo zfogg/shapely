@@ -2,7 +2,7 @@
 
 A game where you're a shape and so is everyone else.
 
-![Shapely gameplay](assets/screenshots/shapely-start.jpg)
+![Shapely gameplay](assets/screenshots/shapely-start.png)
 
 ## Controls
 
