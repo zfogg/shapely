@@ -4,6 +4,7 @@
 //! differ through [`AttackKind`] and [`AttackProfile`].
 
 use bevy::prelude::*;
+use bevy::input::mouse::MouseButton;
 use bevy::sprite::MaterialMesh2dBundle;
 use crate::damageable::Damageable;
 use crate::projectable::{FxKind, FxMaterial};
@@ -73,11 +74,23 @@ pub fn player_movement(keys: Res<ButtonInput<KeyCode>>, time: Res<Time>, state: 
     }
 }
 
-/// Reads keyboard ability input and aims attacks at the mouse cursor.
-pub fn attack_input(mut commands: Commands, keys: Res<ButtonInput<KeyCode>>, time: Res<Time>, mut state: ResMut<crate::GameState>, player: Query<&Transform, With<Player>>, windows: Query<&Window>, cameras: Query<(&Camera, &GlobalTransform)>, mut meshes: ResMut<Assets<Mesh>>, mut materials: ResMut<Assets<FxMaterial>>) {
+/// Maps the G502 button events exposed by winit to player abilities.
+///
+/// Windows exposes G4/G5 as the standard Back/Forward buttons. G7 is a
+/// Right-click is also accepted for slash, which avoids depending on G HUB's
+/// handling of the G7 DPI button.
+pub fn mouse_attack_kind(mouse: &ButtonInput<MouseButton>) -> Option<AttackKind> {
+    if mouse.just_pressed(MouseButton::Forward) { Some(AttackKind::Laser) }
+    else if mouse.just_pressed(MouseButton::Back) { Some(AttackKind::Fireball) }
+    else if mouse.just_pressed(MouseButton::Right) { Some(AttackKind::Slash) }
+    else { None }
+}
+
+/// Reads keyboard and G502 mouse ability input and aims attacks at the mouse cursor.
+pub fn attack_input(mut commands: Commands, keys: Res<ButtonInput<KeyCode>>, mouse: Res<ButtonInput<MouseButton>>, time: Res<Time>, mut state: ResMut<crate::GameState>, player: Query<&Transform, With<Player>>, windows: Query<&Window>, cameras: Query<(&Camera, &GlobalTransform)>, mut meshes: ResMut<Assets<Mesh>>, mut materials: ResMut<Assets<FxMaterial>>) {
     if state.mode != crate::GameMode::Playing { return; }
     let Ok(player) = player.get_single() else { return };
-    let kind = if keys.just_pressed(KeyCode::Digit1) || keys.just_pressed(KeyCode::Space) { Some(AttackKind::Laser) } else if keys.just_pressed(KeyCode::Digit2) { Some(AttackKind::Slash) } else if keys.just_pressed(KeyCode::Digit3) { Some(AttackKind::Fireball) } else { None };
+    let kind = if keys.just_pressed(KeyCode::Digit1) { Some(AttackKind::Laser) } else if keys.just_pressed(KeyCode::Digit2) { Some(AttackKind::Slash) } else if keys.just_pressed(KeyCode::Digit3) { Some(AttackKind::Fireball) } else { mouse_attack_kind(&mouse) };
     let Some(kind) = kind else { return };
     let index = match kind { AttackKind::Laser => 0, AttackKind::Slash => 1, AttackKind::Fireball => 2 };
     if state.cooldowns[index] > 0.0 { return; }
@@ -125,5 +138,20 @@ mod tests {
         assert!(!attack_hits_enemy(&transform, AttackKind::Slash, Vec2::new(90.0, 0.0), 24.0));
         assert!(attack_hits_enemy(&transform, AttackKind::Fireball, Vec2::new(40.0, 0.0), 24.0));
         assert!(!attack_hits_enemy(&transform, AttackKind::Laser, Vec2::new(0.0, 70.0), 10.0));
+    }
+
+    #[test]
+    fn g502_buttons_map_to_the_requested_abilities() {
+        let mut mouse = ButtonInput::default();
+        mouse.press(MouseButton::Forward);
+        assert!(matches!(mouse_attack_kind(&mouse), Some(AttackKind::Laser)));
+
+        let mut mouse = ButtonInput::default();
+        mouse.press(MouseButton::Back);
+        assert!(matches!(mouse_attack_kind(&mouse), Some(AttackKind::Fireball)));
+
+        let mut mouse = ButtonInput::default();
+        mouse.press(MouseButton::Right);
+        assert!(matches!(mouse_attack_kind(&mouse), Some(AttackKind::Slash)));
     }
 }

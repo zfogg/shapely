@@ -223,8 +223,8 @@ fn spawn_hud(commands: &mut Commands, assets: &Res<AssetServer>) {
     });
     commands.spawn((Crosshair, TextBundle { text: Text::from_section("✦", TextStyle { font: assets.load("fonts/FiraSans-Bold.ttf"), font_size: 22.0, color: Color::srgb(0.3, 0.95, 1.0) }), style: Style { position_type: PositionType::Absolute, ..default() }, ..default() }));
     commands.spawn((RoomClearText, TextBundle { text: Text::from_section("", TextStyle { font: assets.load("fonts/FiraSans-Bold.ttf"), font_size: 22.0, color: Color::srgb(0.4, 1.0, 0.65) }), style: Style { position_type: PositionType::Absolute, left: Val::Percent(38.0), top: Val::Px(28.0), ..default() }, ..default() }));
-    spawn_overlay(commands, &font, TitlePanel, "SHAPELY\n\nPLAY\n\nWASD / ARROWS  move\n1 / 2 / 3  attacks\nI  inventory\nP / Esc  pause\nO  settings\n\nSETTINGS: audio-ready neon mode\n\nPress ENTER to PLAY", true);
-    spawn_overlay(commands, &font, PausePanel, "PAUSED\n\nRESUME\n\nCONTROLS\nWASD / ARROWS  move\n1  laser   2  slash   3  fireball\n\nPress P or Esc to resume\nQ  quit", false);
+    spawn_controls_overlay(commands, &font, TitlePanel, true);
+    spawn_controls_overlay(commands, &font, PausePanel, false);
     spawn_overlay(commands, &font, SettingsPanel, "SETTINGS\n\nAudio cues: ON\nDisplay: neon\n\nPress Esc to return", false);
     spawn_overlay(commands, &font, UpgradePanel, "ROOM CLEARED\n\nCHOOSE A PERMANENT UPGRADE\n\n[1] +20 MAX HEALTH\n[2] FASTER COOLDOWNS\n[3] LARGER PROJECTILES\n[4] +30 MAX MANA\n[5] MORE KNOCKBACK", false);
     spawn_overlay(commands, &font, DeathPanel, "YOU WERE SHATTERED\n\nPress R to RESTART", false);
@@ -233,6 +233,48 @@ fn spawn_hud(commands: &mut Commands, assets: &Res<AssetServer>) {
 fn spawn_overlay<T: Component>(commands: &mut Commands, font: &Handle<Font>, marker: T, message: &str, title: bool) {
     let panel = commands.spawn((marker, NodeBundle { style: Style { display: if title { Display::Flex } else { Display::None }, position_type: PositionType::Absolute, left: Val::Percent(17.0), top: Val::Percent(12.0), width: Val::Percent(66.0), height: Val::Percent(76.0), align_items: AlignItems::Center, justify_content: JustifyContent::Center, ..default() }, background_color: BackgroundColor(Color::srgba(0.025, 0.035, 0.12, 0.97)), ..default() })).id();
     commands.entity(panel).with_children(|parent| { parent.spawn(TextBundle { text: Text::from_section(message, TextStyle { font: font.clone(), font_size: if title { 27.0 } else { 22.0 }, color: Color::srgb(0.55, 0.95, 1.0) }), ..default() }); });
+}
+
+fn spawn_controls_overlay<T: Component>(commands: &mut Commands, font: &Handle<Font>, marker: T, title: bool) {
+    let panel = commands.spawn((marker, NodeBundle {
+        style: Style {
+            display: if title { Display::Flex } else { Display::None },
+            position_type: PositionType::Absolute,
+            left: Val::Percent(17.0),
+            top: Val::Percent(12.0),
+            width: Val::Percent(66.0),
+            height: Val::Percent(76.0),
+            align_items: AlignItems::Center,
+            justify_content: JustifyContent::Center,
+            ..default()
+        },
+        background_color: BackgroundColor(Color::srgba(0.025, 0.035, 0.12, 0.97)),
+        ..default()
+    })).id();
+    commands.entity(panel).with_children(|parent| {
+        parent.spawn(NodeBundle {
+            style: Style { width: Val::Px(560.0), flex_direction: FlexDirection::Column, align_items: AlignItems::Center, ..default() },
+            ..default()
+        }).with_children(|content| {
+            content.spawn(TextBundle { text: Text::from_section(if title { "SHAPELY" } else { "PAUSED" }, TextStyle { font: font.clone(), font_size: 34.0, color: Color::srgb(0.3, 0.95, 1.0) }), ..default() });
+            content.spawn(TextBundle { text: Text::from_section(if title { "PLAY" } else { "RESUME" }, TextStyle { font: font.clone(), font_size: 27.0, color: Color::srgb(0.3, 0.95, 1.0) }), style: Style { margin: UiRect::bottom(Val::Px(28.0)), ..default() }, ..default() });
+            content.spawn(TextBundle { text: Text::from_section("ATTACK CONTROLS", TextStyle { font: font.clone(), font_size: 21.0, color: Color::srgb(1.0, 0.45, 0.75) }), style: Style { margin: UiRect::bottom(Val::Px(10.0)), ..default() }, ..default() });
+            content.spawn(NodeBundle { style: Style { width: Val::Percent(100.0), flex_direction: FlexDirection::Row, margin: UiRect::bottom(Val::Px(5.0)), ..default() }, ..default() }).with_children(|row| {
+                row.spawn(TextBundle { text: Text::from_section("ATTACK", TextStyle { font: font.clone(), font_size: 17.0, color: Color::srgb(0.55, 0.95, 1.0) }), style: Style { width: Val::Px(190.0), ..default() }, ..default() });
+                row.spawn(TextBundle { text: Text::from_section("KEYBOARD", TextStyle { font: font.clone(), font_size: 17.0, color: Color::srgb(0.55, 0.95, 1.0) }), style: Style { width: Val::Px(180.0), ..default() }, ..default() });
+                row.spawn(TextBundle { text: Text::from_section("MOUSE", TextStyle { font: font.clone(), font_size: 17.0, color: Color::srgb(0.55, 0.95, 1.0) }), ..default() });
+            });
+            for (attack, keyboard, mouse) in [("LASERBEAM", "1", "G5"), ("SLASH", "2", "Right-click"), ("FIREBALL", "3", "G4")] {
+                content.spawn(NodeBundle { style: Style { width: Val::Percent(100.0), flex_direction: FlexDirection::Row, margin: UiRect::bottom(Val::Px(7.0)), ..default() }, ..default() }).with_children(|row| {
+                    row.spawn(TextBundle { text: Text::from_section(attack, TextStyle { font: font.clone(), font_size: 20.0, color: Color::WHITE }), style: Style { width: Val::Px(190.0), ..default() }, ..default() });
+                    row.spawn(TextBundle { text: Text::from_section(keyboard, TextStyle { font: font.clone(), font_size: 20.0, color: Color::WHITE }), style: Style { width: Val::Px(180.0), ..default() }, ..default() });
+                    row.spawn(TextBundle { text: Text::from_section(mouse, TextStyle { font: font.clone(), font_size: 20.0, color: Color::WHITE }), ..default() });
+                });
+            }
+            content.spawn(TextBundle { text: Text::from_section("WASD / ARROWS   move\nI   inventory\n? / Esc   pause", TextStyle { font: font.clone(), font_size: 20.0, color: Color::srgb(0.55, 0.95, 1.0) }), style: Style { margin: UiRect::top(Val::Px(22.0)), ..default() }, ..default() });
+            content.spawn(TextBundle { text: Text::from_section(if title { "Press ENTER to PLAY" } else { "Press ? or Esc to resume\nQ   quit" }, TextStyle { font: font.clone(), font_size: 20.0, color: Color::srgb(0.55, 0.95, 1.0) }), style: Style { margin: UiRect::top(Val::Px(24.0)), ..default() }, ..default() });
+        });
+    });
 }
 
 fn room_seed(room: IVec2) -> u32 {
@@ -314,11 +356,16 @@ fn restore_room_snapshot(commands: &mut Commands, meshes: &mut ResMut<Assets<Mes
     }
 }
 
+fn question_mark_pressed(keys: &ButtonInput<KeyCode>) -> bool {
+    keys.just_pressed(KeyCode::Slash) && (keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight))
+}
+
 fn menu_input(keys: Res<ButtonInput<KeyCode>>, mut state: ResMut<GameState>, mut exit: EventWriter<AppExit>) {
+    let question_mark = question_mark_pressed(&keys);
     match state.mode {
-        GameMode::Title => if keys.just_pressed(KeyCode::Enter) { state.mode = GameMode::Playing } else if keys.just_pressed(KeyCode::KeyO) { state.mode = GameMode::Settings },
-        GameMode::Playing => if keys.just_pressed(KeyCode::KeyP) || (keys.just_pressed(KeyCode::Escape) && !state.inventory_open) { state.mode = GameMode::Paused },
-        GameMode::Paused => if keys.just_pressed(KeyCode::KeyP) || keys.just_pressed(KeyCode::Escape) { state.mode = GameMode::Playing },
+        GameMode::Title => if keys.just_pressed(KeyCode::Enter) { state.mode = GameMode::Playing },
+        GameMode::Playing => if question_mark || (keys.just_pressed(KeyCode::Escape) && !state.inventory_open) { state.mode = GameMode::Paused },
+        GameMode::Paused => if question_mark || keys.just_pressed(KeyCode::Escape) { state.mode = GameMode::Playing },
         GameMode::Settings => if keys.just_pressed(KeyCode::Escape) { state.mode = GameMode::Title },
         GameMode::Upgrade | GameMode::Dead => {}
     }
@@ -377,13 +424,14 @@ fn hostile_projectiles(time: Res<Time>, mut commands: Commands, mut state: ResMu
     let Ok((player_transform, mut player_bounce, mut player_data)) = player.get_single_mut() else { return };
     for (entity, mut transform, projectile) in &mut projectiles {
         let next = transform.translation + projectile.velocity.extend(0.0) * time.delta_seconds();
-        if walls.iter().any(|(wall_transform, wall)| circle_hits_wall(next.truncate(), projectile.radius, wall_transform.translation.truncate(), wall.size)) { if projectile.kind == FxKind::MinibossBurst { if let (Some(meshes), Some(fx_materials)) = (meshes.as_mut(), fx_materials.as_mut()) { projectable::spawn_fx(&mut commands, meshes, fx_materials, FxKind::MinibossBurst, next.with_z(6.0), Vec2::splat(projectile.radius * 3.4), 0.35); } } commands.entity(entity).despawn_recursive(); continue; }
+        if walls.iter().any(|(wall_transform, wall)| circle_hits_wall(next.truncate(), projectile.radius, wall_transform.translation.truncate(), wall.size)) { if let Some(effect_kind) = projectable::hostile_impact_effect(projectile.kind) { if let (Some(meshes), Some(fx_materials)) = (meshes.as_mut(), fx_materials.as_mut()) { projectable::spawn_fx(&mut commands, meshes, fx_materials, effect_kind, next.with_z(6.0), Vec2::splat(projectile.radius * 3.4), 0.35); } } commands.entity(entity).despawn_recursive(); continue; }
         transform.translation = next;
         if transform.translation.truncate().distance(player_transform.translation.truncate()) < projectile.radius + 19.0 {
             let normal = (player_transform.translation - transform.translation).truncate().normalize_or_zero();
             player_bounce.0 = normal * 190.0 * state.knockback_multiplier;
             player_data.hit_flash = 0.225;
             if state.damage_cooldown <= 0.0 { player_data.take_damage(projectile.damage); state.health = player_data.health; state.damage_cooldown = 0.55; if let (Some(meshes), Some(fx_materials)) = (meshes.as_mut(), fx_materials.as_mut()) { projectable::spawn_fx(&mut commands, meshes, fx_materials, FxKind::PlayerDamage, player_transform.translation + Vec3::new(0.0, 0.0, 8.0), Vec2::splat(88.0), 0.46); } if !player_data.is_alive() { state.mode = GameMode::Dead; } }
+            if let Some(effect_kind) = projectable::hostile_impact_effect(projectile.kind) { if let (Some(meshes), Some(fx_materials)) = (meshes.as_mut(), fx_materials.as_mut()) { projectable::spawn_fx(&mut commands, meshes, fx_materials, effect_kind, transform.translation.with_z(6.0), Vec2::splat(projectile.radius * 3.4), 0.35); } }
             play_sound(&mut commands, cues.as_deref(), SoundKind::Hit);
             commands.entity(entity).despawn_recursive();
         }

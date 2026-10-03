@@ -18,6 +18,14 @@ pub struct HostileProjectile { pub velocity: Vec2, pub damage: i32, pub radius: 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FxKind { Laser = 0, Fireball = 1, ThugShot = 2, MinibossBurst = 3, EnemyDamage = 4, PlayerDamage = 5, Slash = 6 }
 
+/// Returns the impact effect for a hostile projectile, if it should burst.
+pub fn hostile_impact_effect(kind: FxKind) -> Option<FxKind> {
+    match kind {
+        FxKind::ThugShot | FxKind::MinibossBurst => Some(FxKind::MinibossBurst),
+        _ => None,
+    }
+}
+
 /// Uniform data for the animated projectile and damage-effect shader.
 #[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
 pub struct FxMaterial {
@@ -79,5 +87,12 @@ mod tests {
         assert_eq!(projectile.velocity, Vec2::new(150.0, 0.0));
         assert_eq!(projectile.damage, 8);
         assert_eq!(projectile.radius, 12.0);
+    }
+
+    #[test]
+    fn thug_and_miniboss_shots_share_the_yellow_impact_burst() {
+        assert_eq!(hostile_impact_effect(FxKind::ThugShot), Some(FxKind::MinibossBurst));
+        assert_eq!(hostile_impact_effect(FxKind::MinibossBurst), Some(FxKind::MinibossBurst));
+        assert_eq!(hostile_impact_effect(FxKind::Fireball), None);
     }
 }

@@ -7,11 +7,14 @@ A game where you're a shape and so is everyone else.
 ## Controls
 
 - `WASD` / arrow keys: move
-- `1` / `Space`: laserbeam — 5 damage, long and fast, costs mana
-- `2`: slash — 8 damage, short-range burst
-- `3`: fireball — 7 damage, slower medium-range projectile, costs mana
+| Attack | Keyboard | Mouse |
+| --- | --- | --- |
+| Laserbeam | `1` | G5 |
+| Slash | `2` | Right-click |
+| Fireball | `3` | G4 |
 - `I`: open/close the 24-slot inventory overlay
-- `Esc`: close the inventory overlay
+- `Esc`: close the inventory overlay or pause/unpause
+- `?`: pause/unpause
 
 The map is a 3×3 room grid (center plus eight surrounding rooms). Every room has a deterministic, different layout: some are sparse, while others use staggered interior maze walls. Room edges have cardinal gaps only when a neighboring room exists; solid outer edges block movement. Walls have Rapier colliders plus top-down movement resolution. Enemy navigation uses a room-local grid generated from those same wall rectangles, with blocked cells expanded for enemy clearance, and A* paths from the `pathfinding` crate. Paths are recalculated when the player enters a new navigation cell. Enemy progress is stored per room, so clearing one room does not clear the others, and cleared rooms stay cleared when revisited. First visits populate a room with a minion (circle), thug (hexagon), and miniboss (octagon); enemies drop health, mana, and speed potions.
 
