@@ -1,5 +1,7 @@
 # shapely
 
+![Shapely gameplay](assets/screenshots/shapely-start.jpg)
+
 An initial neon action-room prototype in Rust + Bevy.
 
 ## Controls
@@ -40,4 +42,4 @@ cargo install trunk
 trunk serve --release
 ```
 
-Then open the local URL Trunk prints. `webgl2` is enabled in Bevy for broad browser support. The three WGSL attack shader files live in `assets/shaders/` and are the hooks for the next visual pass; the first slice uses bright sprite materials so the game is immediately playable while the material pipeline is expanded.
+Then open the local URL Trunk prints. `webgl2` is enabled in Bevy for broad browser support. Player and enemy attack effects are implemented as separate WGSL shaders under `assets/shaders/player/` and `assets/shaders/enemy/`, with `assets/shaders/fx_material.wgsl` dispatching the shared material pipeline.
