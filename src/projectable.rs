@@ -19,7 +19,7 @@ pub struct HostileProjectile {
     pub kind: FxKind,
 }
 
-const THUG_ACCELERATION: f32 = 90.0;
+const THUG_ACCELERATION: f32 = 180.0;
 const THUG_MAX_SPEED: f32 = 330.0;
 const MINIBOSS_DECELERATION: f32 = 45.0;
 const MINIBOSS_MIN_SPEED: f32 = 72.0;
@@ -226,7 +226,7 @@ mod tests {
             radius: 12.0,
             kind: FxKind::ThugShot,
         };
-        update_hostile_speed(&mut projectile, 1.0);
+        update_hostile_speed(&mut projectile, 0.5);
         assert_eq!(projectile.velocity.length(), 240.0);
         update_hostile_speed(&mut projectile, 10.0);
         assert_eq!(projectile.velocity.length(), THUG_MAX_SPEED);
