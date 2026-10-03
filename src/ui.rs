@@ -468,10 +468,13 @@ pub(crate) fn question_mark_pressed(keys: &ButtonInput<KeyCode>) -> bool {
 }
 
 pub(crate) fn menu_input(
+    mut commands: Commands,
     keys: Res<ButtonInput<KeyCode>>,
     mut state: ResMut<crate::GameState>,
     mut exit: EventWriter<AppExit>,
+    cues: Option<Res<crate::audio::AudioCues>>,
 ) {
+    let previous_mode = state.mode;
     let question_mark = question_mark_pressed(&keys);
     match state.mode {
         crate::GameMode::Title => {
@@ -501,11 +504,20 @@ pub(crate) fn menu_input(
     {
         exit.send(AppExit::Success);
     }
+    if state.mode != previous_mode {
+        crate::audio::play_sound(
+            &mut commands,
+            cues.as_deref(),
+            crate::audio::SoundKind::UiSelect,
+        );
+    }
 }
 
 pub(crate) fn menu_button_interaction(
+    mut commands: Commands,
     mut state: ResMut<crate::GameState>,
     buttons: Query<(&Interaction, &MenuButton), Changed<Interaction>>,
+    cues: Option<Res<crate::audio::AudioCues>>,
 ) {
     for (interaction, button) in &buttons {
         if *interaction != Interaction::Pressed {
@@ -518,6 +530,11 @@ pub(crate) fn menu_button_interaction(
             MenuAction::Restart => crate::GameMode::Dead,
             MenuAction::Quit => state.mode,
         };
+        crate::audio::play_sound(
+            &mut commands,
+            cues.as_deref(),
+            crate::audio::SoundKind::UiSelect,
+        );
     }
 }
 

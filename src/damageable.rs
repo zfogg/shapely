@@ -105,7 +105,7 @@ pub(crate) fn animate_attacks(
                     };
                     killed_rooms.push(enemy.room);
                     commands.spawn((
-                        crate::RoomEntity,
+                        crate::room::RoomEntity,
                         items::Pickup { item: drop },
                         SpriteBundle {
                             sprite: Sprite {

@@ -37,8 +37,8 @@ fn main() {
         .insert_resource(RoomNavGrid::default())
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                title: "shapely // neon rooms".into(),
-                resolution: (1280.0_f32, 720.0_f32).into(),
+                title: "shapely | you're just a bunch of curves and angles".into(),
+                resolution: (1920.0_f32, 1080.0_f32).into(),
                 resizable: true,
                 fit_canvas_to_parent: true,
                 ..default()
@@ -179,9 +179,6 @@ enum GameMode {
 #[derive(Component)]
 struct Lifetime(pub(crate) f32);
 
-#[derive(Component)]
-struct RoomEntity;
-
 fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -226,7 +223,7 @@ fn restart_after_death(
     mut commands: Commands,
     mut state: ResMut<GameState>,
     mut player: Query<&mut Transform, With<Player>>,
-    old_room: Query<Entity, With<RoomEntity>>,
+    old_room: Query<Entity, With<room::RoomEntity>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     nav: ResMut<RoomNavGrid>,

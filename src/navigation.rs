@@ -7,6 +7,10 @@
 use bevy::prelude::*;
 use pathfinding::prelude::astar;
 
+const NAV_CELL_SIZE: f32 = 20.0;
+const NAV_WIDTH: i32 = 56;
+const NAV_HEIGHT: i32 = 32;
+
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 /// A coordinate in a room's navigation grid.
 pub struct GridPos {
@@ -29,13 +33,51 @@ impl Default for RoomNavGrid {
     fn default() -> Self {
         Self {
             room: IVec2::ZERO,
-            width: 28,
-            height: 16,
-            cell_size: 40.0,
+            width: NAV_WIDTH,
+            height: NAV_HEIGHT,
+            cell_size: NAV_CELL_SIZE,
             origin: Vec2::new(-560.0, -320.0),
-            blocked: vec![false; 28 * 16],
+            blocked: vec![false; (NAV_WIDTH * NAV_HEIGHT) as usize],
         }
     }
+}
+
+/// Returns whether an enemy can steer directly to a target without crossing a wall.
+pub fn has_clear_path(start: Vec2, target: Vec2, walls: &[(Vec2, Vec2)], clearance: f32) -> bool {
+    walls.iter().all(|(center, size)| {
+        !segment_intersects_rect(start, target, *center, *size + Vec2::splat(clearance))
+    })
+}
+
+fn segment_intersects_rect(start: Vec2, target: Vec2, center: Vec2, size: Vec2) -> bool {
+    let min = center - size * 0.5;
+    let max = center + size * 0.5;
+    let direction = target - start;
+    let mut entry: f32 = 0.0;
+    let mut exit: f32 = 1.0;
+
+    for (origin, delta, lower, upper) in [
+        (start.x, direction.x, min.x, max.x),
+        (start.y, direction.y, min.y, max.y),
+    ] {
+        if delta.abs() < f32::EPSILON {
+            if origin < lower || origin > upper {
+                return false;
+            }
+            continue;
+        }
+        let mut near = (lower - origin) / delta;
+        let mut far = (upper - origin) / delta;
+        if near > far {
+            std::mem::swap(&mut near, &mut far);
+        }
+        entry = entry.max(near);
+        exit = exit.min(far);
+        if entry > exit {
+            return false;
+        }
+    }
+    true
 }
 
 impl RoomNavGrid {
@@ -202,5 +244,30 @@ mod tests {
             .windows(2)
             .any(|step| (step[1].x - step[0].x).abs() == 1 && (step[1].y - step[0].y).abs() == 1));
         assert!(!path.contains(&GridPos { x: 6, y: 5 }));
+    }
+
+    #[test]
+    fn default_grid_is_fine_enough_for_smoother_pursuit() {
+        let nav = RoomNavGrid::default();
+        assert_eq!(nav.cell_size, 20.0);
+        assert_eq!((nav.width, nav.height), (56, 32));
+        assert_eq!(nav.blocked.len(), 56 * 32);
+    }
+
+    #[test]
+    fn clear_path_stops_at_walls_but_allows_open_space() {
+        let wall = [(Vec2::new(0.0, 0.0), Vec2::new(20.0, 100.0))];
+        assert!(!has_clear_path(
+            Vec2::new(-100.0, 0.0),
+            Vec2::new(100.0, 0.0),
+            &wall,
+            10.0,
+        ));
+        assert!(has_clear_path(
+            Vec2::new(-100.0, 150.0),
+            Vec2::new(100.0, 150.0),
+            &wall,
+            10.0,
+        ));
     }
 }

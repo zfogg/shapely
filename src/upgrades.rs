@@ -243,11 +243,20 @@ pub(crate) fn spawn_upgrade_overlay(commands: &mut Commands, font: &Handle<Font>
 /// Opens the chest over time and reveals the three choices at the end.
 pub(crate) fn update_upgrade_overlay(
     time: Res<Time>,
+    mut commands: Commands,
     mut state: ResMut<crate::GameState>,
     mut choices: Query<&mut Text, With<UpgradeChoicesText>>,
     mut lids: Query<&mut Style, With<ChestLid>>,
+    cues: Option<Res<crate::audio::AudioCues>>,
 ) {
     if state.mode == crate::GameMode::Upgrade {
+        if state.chest_open_progress <= f32::EPSILON {
+            crate::audio::play_sound(
+                &mut commands,
+                cues.as_deref(),
+                crate::audio::SoundKind::ChestOpen,
+            );
+        }
         state.chest_open_progress =
             (state.chest_open_progress + time.delta_seconds() / 1.25).min(1.0);
     } else {
@@ -270,7 +279,12 @@ pub(crate) fn update_upgrade_overlay(
 }
 
 /// Accepts exactly one of the three choices, and only after the chest opens.
-pub(crate) fn choose_upgrade(keys: Res<ButtonInput<KeyCode>>, mut state: ResMut<crate::GameState>) {
+pub(crate) fn choose_upgrade(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut state: ResMut<crate::GameState>,
+    mut commands: Commands,
+    cues: Option<Res<crate::audio::AudioCues>>,
+) {
     if state.mode != crate::GameMode::Upgrade || state.chest_open_progress < 1.0 {
         return;
     }
@@ -289,6 +303,11 @@ pub(crate) fn choose_upgrade(keys: Res<ButtonInput<KeyCode>>, mut state: ResMut<
     state.mode = crate::GameMode::Playing;
     state.chest_open_progress = 0.0;
     state.room_notice = 0.0;
+    crate::audio::play_sound(
+        &mut commands,
+        cues.as_deref(),
+        crate::audio::SoundKind::UiSelect,
+    );
 }
 
 #[cfg(test)]

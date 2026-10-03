@@ -11,7 +11,7 @@ pub struct Wall {
 /// Spawns a visible room wall and its Rapier collider.
 pub fn spawn_wall(commands: &mut Commands, position: Vec2, size: Vec2, color: Color) {
     commands.spawn((
-        crate::RoomEntity,
+        crate::room::RoomEntity,
         Wall { size },
         SpriteBundle {
             sprite: Sprite {

@@ -203,6 +203,7 @@ pub fn attack_input(
     cameras: Query<(&Camera, &GlobalTransform)>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<FxMaterial>>,
+    cues: Option<Res<audio::AudioCues>>,
 ) {
     if state.mode != crate::GameMode::Playing {
         return;
@@ -328,6 +329,12 @@ pub fn attack_input(
             rotation_offset,
         );
     }
+    let sound = match kind {
+        AttackKind::Laser => audio::SoundKind::PlayerLaser,
+        AttackKind::Slash => audio::SoundKind::PlayerSlash,
+        AttackKind::Fireball => audio::SoundKind::PlayerFireball,
+    };
+    audio::play_sound(&mut commands, cues.as_deref(), sound);
     let _ = time;
 }
 
@@ -401,8 +408,10 @@ pub(crate) fn collect_pickups(
 
 /// Uses the keyboard inventory shortcuts.
 pub(crate) fn use_inventory_items(
+    mut commands: Commands,
     keys: Res<ButtonInput<KeyCode>>,
     mut state: ResMut<crate::GameState>,
+    cues: Option<Res<audio::AudioCues>>,
 ) {
     if state.mode != crate::GameMode::Playing {
         return;
@@ -417,7 +426,9 @@ pub(crate) fn use_inventory_items(
         None
     };
     if let Some(item) = requested {
-        consume_item(&mut state, item);
+        if consume_item(&mut state, item) {
+            audio::play_sound(&mut commands, cues.as_deref(), audio::SoundKind::ItemUse);
+        }
     }
 }
 

@@ -6,6 +6,10 @@ use bevy::sprite::MaterialMesh2dBundle;
 /// World-space dimensions of every room.
 pub const ROOM_SIZE: Vec2 = Vec2::new(1120.0, 620.0);
 
+/// Marks entities that belong to the currently spawned room.
+#[derive(Component)]
+pub(crate) struct RoomEntity;
+
 /// Per-room persistence for enemies and hostile projectiles.
 #[derive(Resource, Default)]
 pub(crate) struct RoomSnapshots {
@@ -84,7 +88,7 @@ pub(crate) fn build_room(
 ) {
     let seed = seed(room);
     commands.spawn((
-        crate::RoomEntity,
+        RoomEntity,
         SpriteBundle {
             sprite: Sprite {
                 color: Color::srgb(
@@ -123,7 +127,7 @@ pub(crate) fn build_room(
     for (index, (x, y)) in accents.iter().enumerate() {
         if (seed + index as u32) % 3 != 0 {
             commands.spawn((
-                crate::RoomEntity,
+                RoomEntity,
                 MaterialMesh2dBundle {
                     mesh: meshes.add(Rectangle::new(90.0, 5.0)).into(),
                     material: materials.add(ColorMaterial::from(Color::srgb(0.06, 0.8, 0.92))),
@@ -241,7 +245,7 @@ pub(crate) fn update_room(
             Without<crate::enemy::Enemy>,
         ),
     >,
-    old_room: Query<Entity, With<crate::RoomEntity>>,
+    old_room: Query<Entity, With<RoomEntity>>,
     projectile_entities: Query<Entity, With<crate::projectable::HostileProjectile>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut color_materials: ResMut<Assets<ColorMaterial>>,

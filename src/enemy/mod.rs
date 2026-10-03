@@ -101,7 +101,7 @@ pub(crate) fn spawn_enemy(
     };
     let entity = commands
         .spawn((
-            crate::RoomEntity,
+            crate::room::RoomEntity,
             crate::player::BounceVelocity(Vec2::ZERO),
             Enemy {
                 kind,
@@ -212,6 +212,10 @@ pub fn enemy_ai(
     )>,
     player: Query<&Transform, (With<crate::player::Player>, Without<Enemy>)>,
     nav: Res<crate::navigation::RoomNavGrid>,
+    walls: Query<
+        (&Transform, &crate::wall::Wall),
+        (Without<crate::player::Player>, Without<Enemy>),
+    >,
 ) {
     if state.mode != crate::GameMode::Playing {
         return;
@@ -222,6 +226,10 @@ pub fn enemy_ai(
     let Some(goal) = nav.nearest_open(nav.world_to_cell(player.translation.truncate())) else {
         return;
     };
+    let wall_rects: Vec<(Vec2, Vec2)> = walls
+        .iter()
+        .map(|(transform, wall)| (transform.translation.truncate(), wall.size))
+        .collect();
     let occupied_enemies: Vec<(Entity, Vec2, f32)> = enemy_queries
         .p1()
         .iter()
@@ -238,6 +246,20 @@ pub fn enemy_ai(
         }
         let to_player = (player.translation - transform.translation).truncate();
         if to_player.length() > enemy.radius + 19.0 {
+            let close_direct_pursuit = to_player.length() <= 220.0
+                && crate::navigation::has_clear_path(
+                    transform.translation.truncate(),
+                    player.translation.truncate(),
+                    &wall_rects,
+                    enemy.radius.max(19.0),
+                );
+            if close_direct_pursuit {
+                transform.translation += to_player.normalize_or_zero().extend(0.0)
+                    * spec(enemy.kind).2
+                    * time.delta_seconds();
+                transform.rotation = Quat::from_rotation_z((enemy.phase * 2.0).sin() * 0.08);
+                continue;
+            }
             let start = nav.nearest_open(nav.world_to_cell(transform.translation.truncate()));
             enemy.repath_timer = (enemy.repath_timer - time.delta_seconds()).max(0.0);
             if enemy.planned_goal != Some(goal)
@@ -300,7 +322,14 @@ pub fn enemy_attacks(
         let direction = (player.translation.truncate() - origin).normalize_or_zero();
         if enemy.attack_timer <= 0.0 {
             match enemy.kind {
-                EnemyKind::Minion => enemy.attack_timer = minion::ATTACK_COOLDOWN,
+                EnemyKind::Minion => {
+                    enemy.attack_timer = minion::ATTACK_COOLDOWN;
+                    crate::audio::play_sound(
+                        &mut commands,
+                        cues.as_deref(),
+                        crate::audio::SoundKind::EnemyMinionAttack,
+                    );
+                }
                 EnemyKind::Thug => {
                     crate::projectable::spawn_hostile_projectile(
                         &mut commands,
@@ -317,7 +346,7 @@ pub fn enemy_attacks(
                     crate::audio::play_sound(
                         &mut commands,
                         cues.as_deref(),
-                        crate::audio::SoundKind::Attack,
+                        crate::audio::SoundKind::EnemyThugAttack,
                     );
                 }
                 EnemyKind::Miniboss => {
@@ -340,7 +369,7 @@ pub fn enemy_attacks(
                     crate::audio::play_sound(
                         &mut commands,
                         cues.as_deref(),
-                        crate::audio::SoundKind::Attack,
+                        crate::audio::SoundKind::EnemyMinibossAttack,
                     );
                 }
             }
