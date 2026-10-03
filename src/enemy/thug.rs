@@ -12,3 +12,5 @@ pub const CONTACT_DAMAGE: i32 = 10;
 pub const ATTACK_COOLDOWN: f32 = 2.4;
 /// Speed of a thug projectile.
 pub const PROJECTILE_SPEED: f32 = 150.0;
+/// Damage of a thug projectile.
+pub const PROJECTILE_DAMAGE: i32 = 8;
