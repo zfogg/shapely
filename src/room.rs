@@ -18,22 +18,27 @@ pub(crate) struct RoomPopulation {
     pub(crate) minibosses: usize,
 }
 
-/// Returns the enemy mix for a room, keeping elite encounters uncommon.
-pub(crate) fn room_population(room: IVec2) -> RoomPopulation {
+/// Returns the enemy mix for a room, keeping elite encounters uncommon while
+/// changing their locations between fresh runs.
+pub(crate) fn room_population(room: IVec2, run_seed: u32) -> RoomPopulation {
     let column = (room.x + 1).rem_euclid(3);
     let row = (room.y + 1).rem_euclid(3);
     let room_index = column + row * 3;
-    // Two rooms are miniboss rooms; three additional rooms are thug-only,
-    // for five thug rooms total.
-    let miniboss_room = matches!(room_index, 0 | 8);
-    let thug_room = miniboss_room || matches!(room_index, 1 | 3 | 5);
+    let mut order: Vec<usize> = (0..9).collect();
+    order.sort_by_key(|index| {
+        run_seed
+            .wrapping_add((*index as u32).wrapping_mul(0x9E37_79B9))
+            .rotate_left((*index as u32) % 31)
+    });
+    let miniboss_count = 1 + (run_seed % 3) as usize;
+    let thug_count = 4 + ((run_seed / 3) % 4) as usize;
+    let miniboss_room = order[..miniboss_count].contains(&(room_index as usize));
+    let thug_room = order[..thug_count].contains(&(room_index as usize));
 
     RoomPopulation {
-        // Most rooms have minions, but one ordinary room is a sparse elite
-        // encounter and miniboss rooms stay intentionally less crowded.
-        minions: if room_index == 4 {
-            0
-        } else if miniboss_room {
+        // Every room starts with at least one enemy, including the center.
+        // Elite rooms are lighter on minions because their thugs do the work.
+        minions: if miniboss_room {
             1
         } else if thug_room {
             2
@@ -124,6 +129,7 @@ pub(crate) fn build_room(
     materials: &mut ResMut<Assets<ColorMaterial>>,
     room: IVec2,
     populated: bool,
+    run_seed: u32,
     mut nav: ResMut<crate::navigation::RoomNavGrid>,
     font: Handle<Font>,
 ) {
@@ -179,7 +185,7 @@ pub(crate) fn build_room(
         }
     }
     if populated {
-        crate::enemy::spawn_enemies(commands, meshes, materials, room, font);
+        crate::enemy::spawn_enemies(commands, meshes, materials, room, run_seed, font);
     }
 }
 
@@ -370,6 +376,7 @@ pub(crate) fn update_room(
             &mut color_materials,
             next,
             populated,
+            state.run_seed,
             nav,
             assets.load("fonts/FiraSans-Bold.ttf"),
         );
@@ -442,7 +449,7 @@ mod tests {
     #[test]
     fn room_population_keeps_minibosses_in_the_one_to_three_range() {
         let populations: Vec<_> = (-1..=1)
-            .flat_map(|y| (-1..=1).map(move |x| room_population(IVec2::new(x, y))))
+            .flat_map(|y| (-1..=1).map(move |x| room_population(IVec2::new(x, y), 0)))
             .collect();
         let miniboss_rooms = populations
             .iter()
@@ -454,7 +461,7 @@ mod tests {
     #[test]
     fn room_population_keeps_thugs_in_the_four_to_seven_range() {
         let populations: Vec<_> = (-1..=1)
-            .flat_map(|y| (-1..=1).map(move |x| room_population(IVec2::new(x, y))))
+            .flat_map(|y| (-1..=1).map(move |x| room_population(IVec2::new(x, y), 0)))
             .collect();
         let thug_rooms = populations
             .iter()
@@ -467,7 +474,7 @@ mod tests {
     fn miniboss_rooms_have_two_thugs_and_sparse_minions() {
         for y in -1..=1 {
             for x in -1..=1 {
-                let population = room_population(IVec2::new(x, y));
+                let population = room_population(IVec2::new(x, y), 0);
                 if population.minibosses > 0 {
                     assert_eq!(population.thugs, 2);
                     assert!(population.minions <= 1);

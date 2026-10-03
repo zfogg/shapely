@@ -63,10 +63,11 @@ pub(crate) fn spawn_enemies(
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<ColorMaterial>>,
     room: IVec2,
+    run_seed: u32,
     font: Handle<Font>,
 ) {
     let shift = (crate::room::seed(room) % 5) as f32 * 18.0;
-    let population = crate::room::room_population(room);
+    let population = crate::room::room_population(room, run_seed);
     let minion_positions = [
         Vec2::new(-260.0 + shift, 120.0),
         Vec2::new(250.0 - shift, -80.0),

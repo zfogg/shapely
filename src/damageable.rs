@@ -151,7 +151,7 @@ pub(crate) fn hostile_projectiles(
     time: Res<Time>,
     mut commands: Commands,
     mut state: ResMut<crate::GameState>,
-    mut projectiles: Query<(Entity, &mut Transform, &HostileProjectile), Without<Player>>,
+    mut projectiles: Query<(Entity, &mut Transform, &mut HostileProjectile), Without<Player>>,
     walls: Query<(&Transform, &Wall), (Without<HostileProjectile>, Without<Player>)>,
     mut player: Query<(&mut Transform, &mut BounceVelocity, &mut Player)>,
     mut meshes: Option<ResMut<Assets<Mesh>>>,
@@ -164,7 +164,8 @@ pub(crate) fn hostile_projectiles(
     let Ok((player_transform, mut player_bounce, mut player_data)) = player.get_single_mut() else {
         return;
     };
-    for (entity, mut transform, projectile) in &mut projectiles {
+    for (entity, mut transform, mut projectile) in &mut projectiles {
+        projectable::update_hostile_speed(&mut projectile, time.delta_seconds());
         let next = transform.translation + projectile.velocity.extend(0.0) * time.delta_seconds();
         if walls.iter().any(|(wall_transform, wall)| {
             circle_hits_wall(

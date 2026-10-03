@@ -19,6 +19,24 @@ pub struct HostileProjectile {
     pub kind: FxKind,
 }
 
+const THUG_ACCELERATION: f32 = 90.0;
+const THUG_MAX_SPEED: f32 = 330.0;
+const MINIBOSS_DECELERATION: f32 = 45.0;
+const MINIBOSS_MIN_SPEED: f32 = 72.0;
+
+/// Adjusts hostile projectile speed with a finite cap or floor.
+pub fn update_hostile_speed(projectile: &mut HostileProjectile, delta_seconds: f32) {
+    let speed = projectile.velocity.length();
+    let adjusted = match projectile.kind {
+        FxKind::ThugShot => (speed + THUG_ACCELERATION * delta_seconds).min(THUG_MAX_SPEED),
+        FxKind::MinibossBurst => {
+            (speed - MINIBOSS_DECELERATION * delta_seconds).max(MINIBOSS_MIN_SPEED)
+        }
+        _ => speed,
+    };
+    projectile.velocity = projectile.velocity.normalize_or_zero() * adjusted;
+}
+
 /// Persisted hostile projectile state while the player is visiting another room.
 #[derive(Clone)]
 pub(crate) struct ProjectileSnapshot {
@@ -198,5 +216,33 @@ mod tests {
             Some(FxKind::MinibossBurst)
         );
         assert_eq!(hostile_impact_effect(FxKind::Fireball), None);
+    }
+
+    #[test]
+    fn thug_projectiles_accelerate_but_stop_at_their_cap() {
+        let mut projectile = HostileProjectile {
+            velocity: Vec2::X * 150.0,
+            damage: 8,
+            radius: 12.0,
+            kind: FxKind::ThugShot,
+        };
+        update_hostile_speed(&mut projectile, 1.0);
+        assert_eq!(projectile.velocity.length(), 240.0);
+        update_hostile_speed(&mut projectile, 10.0);
+        assert_eq!(projectile.velocity.length(), THUG_MAX_SPEED);
+    }
+
+    #[test]
+    fn miniboss_projectiles_decelerate_but_stop_at_their_floor() {
+        let mut projectile = HostileProjectile {
+            velocity: Vec2::X * 185.0,
+            damage: 16,
+            radius: 11.0,
+            kind: FxKind::MinibossBurst,
+        };
+        update_hostile_speed(&mut projectile, 1.0);
+        assert_eq!(projectile.velocity.length(), 140.0);
+        update_hostile_speed(&mut projectile, 10.0);
+        assert_eq!(projectile.velocity.length(), MINIBOSS_MIN_SPEED);
     }
 }

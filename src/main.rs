@@ -102,6 +102,7 @@ fn main() {
 struct GameState {
     mode: GameMode,
     room: IVec2,
+    run_seed: u32,
     health: i32,
     mana: i32,
     max_health: i32,
@@ -137,6 +138,7 @@ impl Default for GameState {
         Self {
             mode: GameMode::Title,
             room: IVec2::ZERO,
+            run_seed: fresh_run_seed(),
             health: BASE_HEALTH,
             mana: BASE_MANA,
             max_health: BASE_HEALTH,
@@ -167,6 +169,15 @@ impl Default for GameState {
     }
 }
 
+fn fresh_run_seed() -> u32 {
+    let mut bytes = [0_u8; 4];
+    if getrandom::fill(&mut bytes).is_ok() {
+        u32::from_le_bytes(bytes)
+    } else {
+        0x5EED_C0DE
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum GameMode {
     Title,
@@ -185,6 +196,7 @@ fn setup(
     asset_server: Res<AssetServer>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    state: Res<GameState>,
     nav: ResMut<RoomNavGrid>,
 ) {
     commands.spawn(Camera2dBundle::default());
@@ -213,6 +225,7 @@ fn setup(
         &mut materials,
         IVec2::ZERO,
         true,
+        state.run_seed,
         nav,
         asset_server.load("fonts/FiraSans-Bold.ttf"),
     );
@@ -247,6 +260,7 @@ fn restart_after_death(
         &mut materials,
         IVec2::ZERO,
         true,
+        state.run_seed,
         nav,
         assets.load("fonts/FiraSans-Bold.ttf"),
     );
