@@ -22,6 +22,9 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
 
+      - name: Install native audio headers
+        run: sudo apt-get update && sudo apt-get install --yes libasound2-dev
+
       - name: Cache Rust build artifacts
         uses: Swatinem/rust-cache@v2
 
