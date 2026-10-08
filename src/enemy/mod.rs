@@ -48,6 +48,13 @@ pub enum EnemyKind {
     Miniboss,
 }
 
+const MAX_ENEMIES_BEFORE_MINIBOSS_SUMMON: usize = 7;
+
+/// Returns whether a miniboss may add another summoned minion.
+pub(crate) fn can_summon_minion(active_enemy_count: usize) -> bool {
+    active_enemy_count < MAX_ENEMIES_BEFORE_MINIBOSS_SUMMON
+}
+
 /// Returns `(health, radius, movement speed)` for an archetype.
 pub fn spec(kind: EnemyKind) -> (i32, f32, f32) {
     match kind {
@@ -350,6 +357,7 @@ pub fn enemy_attacks(
     let Ok(player) = player.get_single() else {
         return;
     };
+    let active_enemy_count = enemies.iter().count();
     for (transform, mut enemy) in &mut enemies {
         enemy.attack_timer = (enemy.attack_timer - time.delta_seconds()).max(0.0);
         enemy.summon_timer = (enemy.summon_timer - time.delta_seconds()).max(0.0);
@@ -410,15 +418,19 @@ pub fn enemy_attacks(
             }
         }
         if matches!(enemy.kind, EnemyKind::Miniboss) && enemy.summon_timer <= 0.0 {
-            spawn_enemy(
-                &mut commands,
-                &mut meshes,
-                &mut color_materials,
-                EnemyKind::Minion,
-                origin + direction.perp() * 72.0,
-                enemy.room,
-                assets.load("fonts/FiraSans-Bold.ttf"),
-            );
+            if can_summon_minion(active_enemy_count) {
+                spawn_enemy(
+                    &mut commands,
+                    &mut meshes,
+                    &mut color_materials,
+                    EnemyKind::Minion,
+                    origin + direction.perp() * 72.0,
+                    enemy.room,
+                    assets.load("fonts/FiraSans-Bold.ttf"),
+                );
+            }
+            // Reaching the cap still consumes the summon opportunity. This
+            // prevents a kill from causing an immediate replacement summon.
             enemy.summon_timer = miniboss::SUMMON_COOLDOWN;
         }
     }
@@ -463,5 +475,13 @@ mod tests {
         assert!(minion::CONTACT_DAMAGE < thug::CONTACT_DAMAGE);
         assert!(thug::PROJECTILE_DAMAGE < miniboss::PROJECTILE_DAMAGE);
         assert!(thug::CONTACT_DAMAGE < miniboss::CONTACT_DAMAGE);
+    }
+
+    #[test]
+    fn miniboss_summons_stop_at_seven_active_enemies() {
+        assert!(can_summon_minion(0));
+        assert!(can_summon_minion(6));
+        assert!(!can_summon_minion(7));
+        assert!(!can_summon_minion(12));
     }
 }

@@ -242,7 +242,8 @@ pub(crate) fn spawn_upgrade_overlay(commands: &mut Commands, font: &Handle<Font>
                                 font_size: 19.0,
                                 color: Color::WHITE,
                             },
-                        ),
+                        )
+                        .with_justify(JustifyText::Center),
                         style: Style {
                             width: Val::Percent(100.0),
                             ..default()

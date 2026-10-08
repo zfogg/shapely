@@ -299,6 +299,107 @@ fn spawn_controls_overlay<T: Component>(
                 });
                 content.spawn(TextBundle {
                     text: Text::from_section(
+                        "MAIN CONTROLS",
+                        TextStyle {
+                            font: font.clone(),
+                            font_size: 21.0,
+                            color: Color::srgb(1.0, 0.45, 0.75),
+                        },
+                    ),
+                    style: Style {
+                        margin: UiRect::bottom(Val::Px(10.0)),
+                        ..default()
+                    },
+                    ..default()
+                });
+                content
+                    .spawn(NodeBundle {
+                        style: Style {
+                            width: Val::Percent(100.0),
+                            flex_direction: FlexDirection::Row,
+                            margin: UiRect::bottom(Val::Px(5.0)),
+                            ..default()
+                        },
+                        ..default()
+                    })
+                    .with_children(|row| {
+                        for (label, width) in [("ACTION", 190.0), ("KEYBOARD", 180.0)] {
+                            row.spawn(TextBundle {
+                                text: Text::from_section(
+                                    label,
+                                    TextStyle {
+                                        font: font.clone(),
+                                        font_size: 17.0,
+                                        color: Color::srgb(0.55, 0.95, 1.0),
+                                    },
+                                ),
+                                style: Style {
+                                    width: Val::Px(width),
+                                    ..default()
+                                },
+                                ..default()
+                            });
+                        }
+                        row.spawn(TextBundle {
+                            text: Text::from_section(
+                                "MOUSE",
+                                TextStyle {
+                                    font: font.clone(),
+                                    font_size: 17.0,
+                                    color: Color::srgb(0.55, 0.95, 1.0),
+                                },
+                            ),
+                            ..default()
+                        });
+                    });
+                for (action, keyboard, mouse) in [
+                    ("MOVE", "WASD / Arrows", "—"),
+                    ("INVENTORY", "I", "—"),
+                    ("PAUSE", "? / Esc", "—"),
+                ] {
+                    content
+                        .spawn(NodeBundle {
+                            style: Style {
+                                width: Val::Percent(100.0),
+                                flex_direction: FlexDirection::Row,
+                                margin: UiRect::bottom(Val::Px(7.0)),
+                                ..default()
+                            },
+                            ..default()
+                        })
+                        .with_children(|row| {
+                            for (value, width) in [(action, 190.0), (keyboard, 180.0)] {
+                                row.spawn(TextBundle {
+                                    text: Text::from_section(
+                                        value,
+                                        TextStyle {
+                                            font: font.clone(),
+                                            font_size: 20.0,
+                                            color: Color::WHITE,
+                                        },
+                                    ),
+                                    style: Style {
+                                        width: Val::Px(width),
+                                        ..default()
+                                    },
+                                    ..default()
+                                });
+                            }
+                            row.spawn(TextBundle {
+                                text: Text::from_section(
+                                    mouse,
+                                    TextStyle {
+                                        font: font.clone(),
+                                        font_size: 20.0,
+                                        color: Color::WHITE,
+                                    },
+                                ),
+                                ..default()
+                            });
+                        });
+                }
+                content.spawn(TextBundle {
+                    text: Text::from_section(
                         "ATTACK CONTROLS",
                         TextStyle {
                             font: font.clone(),
@@ -424,21 +525,6 @@ fn spawn_controls_overlay<T: Component>(
                             });
                         });
                 }
-                content.spawn(TextBundle {
-                    text: Text::from_section(
-                        "WASD / ARROWS   move\nI   inventory\n? / Esc   pause",
-                        TextStyle {
-                            font: font.clone(),
-                            font_size: 20.0,
-                            color: Color::srgb(0.55, 0.95, 1.0),
-                        },
-                    ),
-                    style: Style {
-                        margin: UiRect::top(Val::Px(22.0)),
-                        ..default()
-                    },
-                    ..default()
-                });
                 content.spawn(TextBundle {
                     text: Text::from_section(
                         if title {
